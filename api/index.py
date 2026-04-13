@@ -3,11 +3,13 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
-import uvicorn
+import sys
+import os
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from pipeline import LangraphPipeline
 from context import context_manager
-
 
 app = FastAPI(
     title="AI Pipeline POC",
@@ -23,8 +25,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
+try:
+    app.mount("/static", StaticFiles(directory="static"), name="static")
+except:
+    pass
 
 class QueryRequest(BaseModel):
     query: str = Field(..., description="User's input query", min_length=1)
@@ -37,7 +41,6 @@ class QueryRequest(BaseModel):
                 "use_mock_llm": True
             }
         }
-
 
 class QueryResponse(BaseModel):
     input: str
@@ -52,9 +55,7 @@ class QueryResponse(BaseModel):
     success: bool
     error: Optional[str] = None
 
-
 pipeline = LangraphPipeline()
-
 
 @app.get("/")
 async def root():
@@ -65,22 +66,18 @@ async def root():
             "/query": "POST - Submit a query to the AI pipeline",
             "/context": "GET - View current context",
             "/context/clear": "POST - Clear context",
-            "/pipeline/info": "GET - Get pipeline graph information",
+            "/graph": "GET - Get pipeline graph information",
             "/health": "GET - Health check"
         }
     }
-
 
 @app.post("/query", response_model=QueryResponse)
 async def process_query(request: QueryRequest):
     try:
         result = pipeline.execute(request.query)
-        
         return QueryResponse(**result)
-        
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Pipeline execution failed: {str(e)}")
-
 
 @app.get("/context")
 async def get_context():
@@ -89,17 +86,14 @@ async def get_context():
         "history": context_manager.get_history()
     }
 
-
 @app.post("/context/clear")
 async def clear_context():
     context_manager.clear_context()
     return {"message": "Context cleared successfully"}
 
-
 @app.get("/graph")
 async def get_graph_info():
     return pipeline.get_graph_info()
-
 
 @app.get("/health")
 async def health_check():
@@ -109,33 +103,4 @@ async def health_check():
         "context_manager": "operational"
     }
 
-
-if __name__ == "__main__":
-    print("=" * 60)
-    print("AI Pipeline POC - Langraph Multi-Agent System")
-    print("=" * 60)
-    print("\nWeb UI:")
-    print("  http://localhost:8000/static/index.html")
-    print("\nAPI Documentation:")
-    print("  http://localhost:8000/docs")
-    print("\nAPI Endpoints:")
-    print("  - POST /query          - Submit queries")
-    print("  - GET  /context        - View MCP context")
-    print("  - POST /context/clear  - Clear context")
-    print("  - GET  /graph          - Langraph structure")
-    print("  - GET  /health         - Health check")
-    print("\nFeatures:")
-    print("  - TRUE Langraph with 4 specialized agents")
-    print("  - Semantic intent mapping")
-    print("  - MCP-style context management")
-    print("  - Conditional agent routing")
-    print("=" * 60)
-    print()
-    
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
-        log_level="info"
-    )
+handler = app
