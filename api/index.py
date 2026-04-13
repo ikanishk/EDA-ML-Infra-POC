@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, HTMLResponse, FileResponse
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 import sys
@@ -58,9 +58,14 @@ class QueryResponse(BaseModel):
 
 pipeline = LangraphPipeline()
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 async def root():
-    return RedirectResponse(url="/static/index.html")
+    html_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "index.html")
+    try:
+        with open(html_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        return HTMLResponse(content="<h1>AI Pipeline POC</h1><p>UI not found. Use /docs for API documentation.</p>", status_code=200)
 
 @app.post("/query", response_model=QueryResponse)
 async def process_query(request: QueryRequest):
