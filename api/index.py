@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 import sys
@@ -59,17 +60,7 @@ pipeline = LangraphPipeline()
 
 @app.get("/")
 async def root():
-    return {
-        "message": "AI Pipeline POC API",
-        "version": "1.0.0",
-        "endpoints": {
-            "/query": "POST - Submit a query to the AI pipeline",
-            "/context": "GET - View current context",
-            "/context/clear": "POST - Clear context",
-            "/graph": "GET - Get pipeline graph information",
-            "/health": "GET - Health check"
-        }
-    }
+    return RedirectResponse(url="/static/index.html")
 
 @app.post("/query", response_model=QueryResponse)
 async def process_query(request: QueryRequest):
